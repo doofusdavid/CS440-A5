@@ -11,7 +11,7 @@ def printState(state):
         for j in range(len(printState)):
             print("{}\t".format(printState[j][i]), end='')
         print()
-    print('------------')
+    print('------------\n\n')
 
 
 def findLongest(state):
@@ -28,11 +28,14 @@ def validMoves(state):
     for itemToMove in state:
         # Check if the list is empty
         if itemToMove:
-            for placeToMove in state:
+            # Iterate through the rest of the states
+            for placeToMove in range(len(state)):
                 # don't count as valid move if it's back to the same location
-                if state.index(itemToMove) != state.index(placeToMove):
-                    if len(placeToMove) == 0 or itemToMove[0] < placeToMove[0]:
-                        validStates.append((state.index(itemToMove), state.index(placeToMove)))
+                if state.index(itemToMove) != placeToMove:
+                    # valid move if the place to move is empty or the item to move is smaller
+                    if len(state[placeToMove]) == 0 or itemToMove[0] < state[placeToMove][0]:
+                        # append the tuple (move from, move to) to the valid states
+                        validStates.append((state.index(itemToMove), placeToMove))
     return validStates
 
 
@@ -50,11 +53,15 @@ def winner(state):
     board = [[], [], [1,2,3]]
     return state == board
 
+# def trainQ(nRepetitions, learningRate, epsilonDecayFactor):
+
+initialState = [[1,2,3],[],[]]
 
 myState = [[1 ,2] ,[3] ,[]]
+printState(initialState)
 
-print(validMoves(myState))
-for move in validMoves(myState):
-    makeMove(myState, move)
-    printState(myState)
-    unMakeMove(myState, move)
+for move in validMoves(initialState):
+    makeMove(initialState, move)
+    printState(initialState)
+    unMakeMove(initialState, move)
+
