@@ -1,15 +1,17 @@
 import copy as copy
+import numpy as np
+import random
 
 def printState(state):
-    printState = copy.deepcopy(state)
-    maxLength = findLongest(printState)
-    for item in printState:
+    stateCopy = copy.deepcopy(state)
+    maxLength = findLongest(stateCopy)
+    for item in stateCopy:
         for x in range (len(item) , maxLength):
             item.insert(0, ' ')
 
     for i in range(maxLength):
-        for j in range(len(printState)):
-            print("  {}".format(printState[j][i]), end='')
+        for j in range(len(stateCopy)):
+            print("  {}".format(stateCopy[j][i]), end='')
         print()
     print('--|--|--|--\n\n')
 
@@ -21,22 +23,6 @@ def findLongest(state):
 
     return length
 
-
-def validMovesOld(state):
-    validStates = []
-
-    for itemToMove in state:
-        # Check if the list is empty
-        if itemToMove:
-            # Iterate through the rest of the states
-            for placeToMove in range(len(state)):
-                # don't count as valid move if it's back to the same location
-                if state.index(itemToMove) != placeToMove:
-                    # valid move if the place to move is empty or the item to move is smaller
-                    if len(state[placeToMove]) == 0 or itemToMove[0] < state[placeToMove][0]:
-                        # append the tuple (move from, move to) to the valid states
-                        validStates.append((state.index(itemToMove), placeToMove))
-    return validStates
 
 def validMoves(state):
     validStates = []
@@ -71,46 +57,67 @@ def winner(state):
     board = [[], [], [1,2,3]]
     return state == board
 
+def myTupler(state):
+    '''Need immutable type for key to dictionary '''
+    superTuple = tuple(tuple(s) for s in state)
+    return superTuple
 
-# def trainQ(nRepetitions, learningRate, epsilonDecayFactor):
 
-initialState = [[],[],[1,2,3]]
-# initialState = [[1,2],[],[3]]
-# myState = [[1 ,2] ,[3] ,[]]
-printState(initialState)
-makeMove([[], [], [1, 2, 3]], [3, 2])
-makeMove(initialState, [3,2])
-printState(initialState)
-print(validMoves(initialState))
-#
-#
-# for move in validMoves(initialState):
-#     makeMove(initialState, move)
-#     printState(initialState)
-#     unMakeMove(initialState, move)
-#
-# Q = {}
-#
-#
-# def myTupler(state):
-#     '''Need immutable type for key to dictionary '''
-#     superTuple = tuple(tuple(l) for l in state)
-#     return superTuple
-#
-#
-# Q[myTupler(initialState), (0, 1)] = 0
-# print(Q)
-#
-# rho = 0.1
-# import random
-# import numpy as np
-# # move = random.choice(validMoves(myState))
-# move = (0,2)
-# print(validMoves(initialState))
-# print(Q.get((myTupler(initialState),move),0))
-# #print(Q[(myTupler(initialState),move)])
-#
-# Q[(myTupler(initialState),move)] = Q.get((myTupler(initialState),move),0) + rho * (-1 - Q.get((myTupler(initialState),move),0))
-#
-#
-# print(Q)
+def epsilonGreedy(epsilon, Q, state, validMovesF):
+    goodMoves = validMovesF(state)
+    if np.random.uniform() < epsilon:
+        # Random Move
+        return tuple(random.choice(goodMoves))
+    else:
+        # Greedy Move
+        Qs = np.array([Q.get((myTupler(state),tuple(m)), 0.0) for m in goodMoves])
+        return tuple(goodMoves[np.argmax(Qs)])
+
+
+def trainQ(nRepetitions, learningRate, epsilonDecayFactor, validMovesF, makeMoveF):
+    maxGames = nRepetitions
+    rho = learningRate
+    epsilonDecayRate = epsilonDecayFactor
+    epsilon = 1.0
+    Q = {}
+    stepList = []
+    showMoves = False
+
+    for nGames in range(maxGames):
+        epsilon *= epsilonDecayRate
+        step = 0
+        state = [[1, 2, 3], [], []]
+        done = False
+
+        while not done:
+            step += 1
+            move = epsilonGreedy(epsilon, Q, state, validMovesF)
+            stateNew = copy.deepcopy(state)
+            makeMoveF(stateNew, move)
+            if (myTupler(state), move) not in Q:
+                Q[(myTupler(state), move)] = 0.0  # Initial Q value for new state, move
+            if showMoves:
+                printState(stateNew)
+            if winner(stateNew):
+                # We won!  backfill Q
+                if showMoves:
+                    print('End State, we won!')
+                Q[(myTupler(state), move)] = 1.0
+                done = True
+                stepList.append(step)
+
+            if step > 1:
+                #Q[(myTupler(stateOld), moveOld)] += rho * (Q[(myTupler(state), move)] - Q[(myTupler(stateOld), moveOld)])
+                Q[(myTupler(stateOld), moveOld)] += rho * (Q[(myTupler(state), move)] - Q[(myTupler(stateOld), moveOld)])
+
+            stateOld, moveOld = state, move
+            state = stateNew
+
+    print(epsilon)
+    return Q,stepList
+
+
+myQ, myStep = trainQ(1000, 0.5, 0.7, validMoves, makeMove)
+print(len(myStep),len(myQ))
+
+print("mean:", np.mean(myStep))
